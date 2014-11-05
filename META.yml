@@ -18,7 +18,11 @@ no_index:
     - t
     - inc
 requires:
+  Moo: 0
+  Test::Exception: 0
   Test::More: 0
-  perl: 5.01
-  version: 0
-version: 0.01
+  namespace::clean: 0
+  perl: 5.008
+resources:
+  repository: https://github.com/gwadej/MooX-Value.git
+version: 0.02
