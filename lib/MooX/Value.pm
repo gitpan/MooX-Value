@@ -6,7 +6,7 @@ use strict;
 use Moo;
 use namespace::clean;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 has value => ( is => 'ro' );
 
@@ -20,7 +20,8 @@ sub BUILD
 {
     my ($self) = @_;
     my ($why, $long, $data) = $self->_why_invalid( $self->{value} );
-    _throw_exception( $why, $long, $data ) if defined $why;
+    $self->_throw_exception( $why, $long, $data ) if defined $why;
+    $self->{value} = $self->_untaint( $self->value );
     return $self;
 }
 
@@ -43,8 +44,23 @@ sub _is_valid
 # Default exception support just uses die to throw an exception.
 sub _throw_exception
 {
-    my ($why, $longmsg, $data) = @_;
+    my ($self, $why, $longmsg, $data) = @_;
     die $why;
+}
+
+# Brute force untaint.
+sub _untaint
+{
+    my ($self, $value) = @_;
+
+    # Can only untaint scalars
+    return $value if ref $value;
+
+    # This is usually a very bad idea. It should be safe here because the class
+    # has, by definition, validated the input before we get to this function.
+    # If there is a problem, the validation code should be corrected.
+    $value =~ m/\A(.*)\z/;
+    return $1;
 }
 
 1;
@@ -56,7 +72,7 @@ MooX::Value - Base class for minimal Value Object classes
 
 =head1 VERSION
 
-This document describes MooX::Value version 0.02
+This document describes MooX::Value version 0.03
 
 =head1 SYNOPSIS
 
@@ -143,7 +159,7 @@ should not return modifiable internal state.
 The following methods may be overridden by any subclass to provide actual
 validation and reporting of errors.
 
-=head3 $self->_is_valid()
+=head3 $self->_is_valid( $value )
 
 This method B<must> be overridden in any subclass (unless you override
 C<_why_invalid> instead).
@@ -151,7 +167,7 @@ C<_why_invalid> instead).
 It performs the validation on the supplied value and returns C<true> if the
 parameter is valid and C<false> otherwise.
 
-=head3 $self->_why_invalid()
+=head3 $self->_why_invalid( $value )
 
 By default, this method calls the C<_is_invalid> method and returns c<undef> on
 success or a list of three values on failure. The default error message is
@@ -187,6 +203,17 @@ This internal method handles the actual throwing of the exception. If you need
 to use something more advanced than a simple C<die>, you can override this
 method. The C<_throw_exception> method B<must> throw an exception by some
 means. It should never return.
+
+=head3 $self->_untaint( $value )
+
+This internal method returns an untainted copy of the value attribute. The
+base class version of this method performs a brute force untainting of any
+scalar value. Since it is only called after the value is validated, this
+should be safe.
+
+A subclass can override this method to perform some other kind of untainting.
+If the value is not a simple scalar, the subclass must override this method if
+untainting is desired.
 
 =head2 Internal Interface
 
@@ -231,6 +258,10 @@ No bugs have been reported.
 Please report any bugs or feature requests to
 C<bug-moox-value@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org>.
+
+=head1 ACKNOWLEDGEMENTS
+
+Thanks to Joshua Brandt for suggesting the idea of untainting the value.
 
 =head1 AUTHOR
 
